@@ -7,7 +7,7 @@ from sklearn.manifold import TSNE
 # -------------------------------
 
 gene_pca = pd.read_csv("PCA/gene_pca.csv", index_col=0)
-meta = pd.read_csv("metadata_clean.csv", index_col=0)
+meta = pd.read_csv("patch-seq_preprocess/metadata_clean.csv", index_col=0)
 
 print("Gene PCA shape:", gene_pca.shape)
 print("Metadata shape:", meta.shape)

@@ -10,7 +10,7 @@ from sklearn.metrics import adjusted_rand_score, normalized_mutual_info_score
 # -------------------------------
 
 gene_pca = pd.read_csv("PCA/gene_pca.csv", index_col=0)
-meta = pd.read_csv("metadata_clean.csv", index_col=0)
+meta = pd.read_csv("patch-seq_preprocess/metadata_clean.csv", index_col=0)
 tsne = pd.read_csv("TSNE/gene_tsne.csv", index_col=0)
 
 

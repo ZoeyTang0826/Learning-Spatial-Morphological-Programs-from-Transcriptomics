@@ -7,10 +7,10 @@ from sklearn.decomposition import PCA
 # -------------------------------
 
 # gene expression
-gene = pd.read_csv("expression_hvg_log_normalized.csv", index_col=0)
+gene = pd.read_csv("patch-seq_preprocess/expression_hvg_log_normalized.csv", index_col=0)
 
 # metadata
-meta = pd.read_csv("metadata_clean.csv", index_col=0)
+meta = pd.read_csv("patch-seq_preprocess/metadata_clean.csv", index_col=0)
 
 print("Gene expression shape:", gene.shape)
 print("Metadata shape:", meta.shape)
