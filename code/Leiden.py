@@ -1,6 +1,9 @@
+import os
+import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import scanpy as sc
+from matplotlib.colors import ListedColormap, BoundaryNorm
 from sklearn.metrics import adjusted_rand_score, normalized_mutual_info_score
 
 # -------------------------------
@@ -9,6 +12,8 @@ from sklearn.metrics import adjusted_rand_score, normalized_mutual_info_score
 
 gene_pca = pd.read_csv("PCA/gene_pca.csv", index_col=0)
 meta = pd.read_csv("metadata_clean.csv", index_col=0)
+tsne = pd.read_csv("TSNE/gene_tsne.csv", index_col=0)
+
 
 print("Gene PCA shape:", gene_pca.shape)
 print("Metadata shape:", meta.shape)
@@ -17,6 +22,7 @@ print("Metadata shape:", meta.shape)
 common_cells = gene_pca.index.intersection(meta.index)
 gene_pca = gene_pca.loc[common_cells]
 meta = meta.loc[common_cells]
+
 
 print("\nAfter alignment:")
 print("Gene PCA shape:", gene_pca.shape)
@@ -43,7 +49,7 @@ labels_true = meta[label_col].astype(str)
 # -------------------------------
 
 adata = sc.AnnData(X)
-adata.obs_names = common_cells
+adata.obs_names = X.index.astype(str)
 adata.obs[label_col] = labels_true.values
 
 # neighbor graph on PCA coordinates
@@ -55,7 +61,7 @@ sc.tl.leiden(adata, resolution=0.5, key_added="leiden_cluster")
 cluster_labels = adata.obs["leiden_cluster"].astype(str)
 
 cluster_df = pd.DataFrame({
-    "cell_id": common_cells,
+    "cell_id": X.index,
     "Leiden_cluster": cluster_labels.values,
     label_col: labels_true.values
 }).set_index("cell_id")
@@ -85,56 +91,86 @@ metrics_df = pd.DataFrame({
 metrics_df.to_csv("leiden_clustering_metrics.csv", index=False)
 
 # -------------------------------
-# 5. Plot Leiden clusters on first two PCs
+# 5. Prepare cluster colors
+# -------------------------------
+
+# numeric cluster IDs for plotting
+cluster_ids = cluster_labels.astype(int).values
+n_clusters = len(np.unique(cluster_ids))
+
+# use a discrete colormap
+base_colors = plt.get_cmap("tab10").colors
+if n_clusters <= 10:
+    colors = base_colors[:n_clusters]
+else:
+    colors = plt.get_cmap("tab20", n_clusters).colors
+
+cmap = ListedColormap(colors)
+bounds = np.arange(n_clusters + 1)
+norm = BoundaryNorm(bounds, cmap.N)
+
+# -------------------------------
+# 6. Plot Leiden clusters on first two PCs
 # -------------------------------
 
 plt.figure(figsize=(7, 6))
-plt.scatter(
+
+scatter = plt.scatter(
     gene_pca.iloc[:, 0],
     gene_pca.iloc[:, 1],
-    c=pred_codes,
-    cmap="tab10",
+    c=cluster_ids,
+    cmap=cmap,
+    norm=norm,
     s=12
 )
 
 plt.xlabel("PC1")
 plt.ylabel("PC2")
 plt.title("Leiden Clusters on Gene PCA")
-plt.colorbar(label="Leiden cluster")
+
+cbar = plt.colorbar(scatter, boundaries=bounds)
+cbar.set_label("Cluster ID")
+cbar.set_ticks(np.arange(n_clusters) + 0.5)
+cbar.set_ticklabels(np.arange(n_clusters))
+
 plt.tight_layout()
 plt.savefig("Leiden_clusters_on_gene_PCA.png", dpi=300)
 plt.show()
 
 # -------------------------------
-# 6. Plot Leiden clusters on t-SNE if available
+# 7. Plot Leiden clusters on t-SNE if available
 # -------------------------------
 
-try:
-    tsne = pd.read_csv("gene_tsne.csv", index_col=0)
-    tsne = tsne.loc[common_cells]
+# align tSNE with existing cells
+common_tsne_cells = X.index.intersection(tsne.index)
+tsne = tsne.loc[common_tsne_cells]
+tsne_cluster_ids = pd.Series(cluster_ids, index=X.index).loc[common_tsne_cells].values
 
-    plt.figure(figsize=(7, 6))
-    plt.scatter(
+plt.figure(figsize=(7, 6))
+
+scatter = plt.scatter(
         tsne.iloc[:, 0],
         tsne.iloc[:, 1],
-        c=pred_codes,
-        cmap="tab10",
-        s=12
-    )
+        c=tsne_cluster_ids,
+        cmap=cmap,
+        norm=norm,
+        s=12)
 
-    plt.xlabel("tSNE1")
-    plt.ylabel("tSNE2")
-    plt.title("Leiden Clusters on Gene t-SNE")
-    plt.colorbar(label="Leiden cluster")
-    plt.tight_layout()
-    plt.savefig("Leiden_clusters_on_tSNE.png", dpi=300)
-    plt.show()
+plt.xlabel("tSNE1")
+plt.ylabel("tSNE2")
+plt.title("Leiden Clusters on Gene t-SNE")
 
-except FileNotFoundError:
-    print("\n gene_tsne.csv not found, skipping t-SNE cluster plot.")
+cbar = plt.colorbar(scatter, boundaries=bounds)
+cbar.set_label("Cluster ID")
+cbar.set_ticks(np.arange(n_clusters) + 0.5)
+cbar.set_ticklabels(np.arange(n_clusters))
+
+plt.tight_layout()
+plt.savefig("Leiden_clusters_on_tSNE.png", dpi=300)
+plt.show()
 
 # -------------------------------
-# 7. Cluster vs RNA type table
+# 8. Cluster vs RNA type table
 # -------------------------------
 
 cluster_vs_label = pd.crosstab(

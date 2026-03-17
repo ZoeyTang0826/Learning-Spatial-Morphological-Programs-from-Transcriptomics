@@ -1,5 +1,7 @@
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.colors import ListedColormap, BoundaryNorm
 from sklearn.mixture import GaussianMixture
 from sklearn.metrics import adjusted_rand_score, normalized_mutual_info_score
 
@@ -9,6 +11,8 @@ from sklearn.metrics import adjusted_rand_score, normalized_mutual_info_score
 
 gene_pca = pd.read_csv("PCA/gene_pca.csv", index_col=0)
 meta = pd.read_csv("metadata_clean.csv", index_col=0)
+tsne = pd.read_csv("TSNE/gene_tsne.csv", index_col=0)
+
 
 print("Gene PCA shape:", gene_pca.shape)
 print("Metadata shape:", meta.shape)
@@ -17,6 +21,7 @@ print("Metadata shape:", meta.shape)
 common_cells = gene_pca.index.intersection(meta.index)
 gene_pca = gene_pca.loc[common_cells]
 meta = meta.loc[common_cells]
+tsne = tsne.loc[common_cells]
 
 print("\nAfter alignment:")
 print("Gene PCA shape:", gene_pca.shape)
@@ -92,50 +97,65 @@ metrics_df.to_csv("gmm_clustering_metrics.csv", index=False)
 # -------------------------------
 
 plt.figure(figsize=(7, 6))
-plt.scatter(
+
+colors = plt.get_cmap("tab10").colors[:n_clusters]
+cmap = ListedColormap(colors)
+bounds = np.arange(n_clusters + 1)          # 0,1,2,...,8
+norm = BoundaryNorm(bounds, cmap.N)
+
+sc = plt.scatter(
     gene_pca.iloc[:, 0],
     gene_pca.iloc[:, 1],
     c=cluster_labels,
-    cmap="tab10",
+    cmap=cmap,
+    norm=norm,
     s=12
 )
 
 plt.xlabel("PC1")
 plt.ylabel("PC2")
 plt.title("GMM Clusters on Gene PCA")
-plt.colorbar(label="GMM cluster")
+
+cbar = plt.colorbar(sc, boundaries=bounds)
+cbar.set_label("Cluster ID")
+cbar.set_ticks(np.arange(n_clusters) + 0.5)   # centers of blocks
+cbar.set_ticklabels(range(n_clusters))
+
 plt.tight_layout()
 plt.savefig("GMM_clusters_on_gene_PCA.png", dpi=300)
 plt.show()
 
 # -------------------------------
-# 6. Plot GMM clusters on t-SNE if available
+# 6. Plot GMM clusters on t-SNE
 # -------------------------------
+plt.figure(figsize=(7, 6))
 
-try:
-    tsne = pd.read_csv("gene_tsne.csv", index_col=0)
-    tsne = tsne.loc[common_cells]
+colors = plt.get_cmap("tab10").colors[:n_clusters]
+cmap = ListedColormap(colors)
+bounds = np.arange(n_clusters + 1)          # 0,1,2,...,8
+norm = BoundaryNorm(bounds, cmap.N)
 
-    plt.figure(figsize=(7, 6))
-    plt.scatter(
-        tsne.iloc[:, 0],
-        tsne.iloc[:, 1],
-        c=cluster_labels,
-        cmap="tab10",
-        s=12
-    )
+sc = plt.scatter(
+    tsne.iloc[:, 0],
+    tsne.iloc[:, 1],
+    c=cluster_labels,
+    cmap=cmap,
+    norm=norm,
+    s=12
+)
 
-    plt.xlabel("tSNE1")
-    plt.ylabel("tSNE2")
-    plt.title("GMM Clusters on Gene t-SNE")
-    plt.colorbar(label="GMM cluster")
-    plt.tight_layout()
-    plt.savefig("GMM_clusters_on_tSNE.png", dpi=300)
-    plt.show()
+plt.xlabel("tSNE1")
+plt.ylabel("tSNE2")
+plt.title("GMM Clusters on Gene t-SNE")
 
-except FileNotFoundError:
-    print("\n gene_tsne.csv not found, skipping t-SNE cluster plot.")
+cbar = plt.colorbar(sc, boundaries=bounds)
+cbar.set_label("Cluster ID")
+cbar.set_ticks(np.arange(n_clusters) + 0.5)   # centers of blocks
+cbar.set_ticklabels(range(n_clusters))
 
+plt.tight_layout()
+plt.savefig("GMM_clusters_on_tSNE.png", dpi=300)
+plt.show()
 # -------------------------------
 # 7. Crosstab: clusters vs RNA type
 # -------------------------------

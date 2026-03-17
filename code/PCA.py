@@ -1,5 +1,4 @@
 import pandas as pd
-import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
 
@@ -7,16 +6,12 @@ from sklearn.decomposition import PCA
 # 1. Load preprocessed data
 # -------------------------------
 
-# morphology features
-morph = pd.read_csv("morphology_selected_scaled.csv", index_col=0)
-
 # gene expression
 gene = pd.read_csv("expression_hvg_log_normalized.csv", index_col=0)
 
 # metadata
 meta = pd.read_csv("metadata_clean.csv", index_col=0)
 
-print("Morphology shape:", morph.shape)
 print("Gene expression shape:", gene.shape)
 print("Metadata shape:", meta.shape)
 
@@ -24,32 +19,20 @@ print("\nMetadata columns:")
 print(meta.columns.tolist())
 
 # -------------------------------
-# 2. Align all datasets by cell ID
+# 2. Align datasets by cell ID
 # -------------------------------
 
-common_cells = gene.index.intersection(morph.index).intersection(meta.index)
+common_cells = gene.index.intersection(meta.index)
 
 gene = gene.loc[common_cells]
-morph = morph.loc[common_cells]
 meta = meta.loc[common_cells]
 
 print("\nAfter alignment:")
-print("Morphology shape:", morph.shape)
 print("Gene expression shape:", gene.shape)
 print("Metadata shape:", meta.shape)
 
 # -------------------------------
-# 3. PCA on Morphology
-# -------------------------------
-
-pca_m = PCA(n_components=10)
-morph_pca = pca_m.fit_transform(morph)
-
-print("\nMorphology PCA variance explained:")
-print(pca_m.explained_variance_ratio_)
-
-# -------------------------------
-# 4. PCA on Gene Expression
+# 3. PCA on Gene Expression only
 # -------------------------------
 
 pca_g = PCA(n_components=10)
@@ -59,26 +42,8 @@ print("\nGene PCA variance explained:")
 print(pca_g.explained_variance_ratio_)
 
 # -------------------------------
-# 5. Joint PCA (gene + morphology)
+# 4. Save PCA coordinates
 # -------------------------------
-
-X_joint = np.concatenate([gene.values, morph.values], axis=1)
-
-pca_joint = PCA(n_components=10)
-joint_pca = pca_joint.fit_transform(X_joint)
-
-print("\nJoint PCA variance explained:")
-print(pca_joint.explained_variance_ratio_)
-
-# -------------------------------
-# 6. Save PCA coordinates
-# -------------------------------
-
-morph_pca_df = pd.DataFrame(
-    morph_pca,
-    index=common_cells,
-    columns=[f"PC{i+1}" for i in range(morph_pca.shape[1])]
-)
 
 gene_pca_df = pd.DataFrame(
     gene_pca,
@@ -86,31 +51,10 @@ gene_pca_df = pd.DataFrame(
     columns=[f"PC{i+1}" for i in range(gene_pca.shape[1])]
 )
 
-joint_pca_df = pd.DataFrame(
-    joint_pca,
-    index=common_cells,
-    columns=[f"PC{i+1}" for i in range(joint_pca.shape[1])]
-)
-
-morph_pca_df.to_csv("morphology_pca.csv")
 gene_pca_df.to_csv("gene_pca.csv")
-joint_pca_df.to_csv("joint_pca.csv")
 
 # -------------------------------
-# 7. Plot PCA (Morphology)
-# -------------------------------
-
-plt.figure(figsize=(6, 5))
-plt.scatter(morph_pca[:, 0], morph_pca[:, 1], s=8)
-plt.xlabel("PC1")
-plt.ylabel("PC2")
-plt.title("PCA of Morphology Features")
-plt.tight_layout()
-plt.savefig("PCA_morph.png", dpi=300)
-plt.show()
-
-# -------------------------------
-# 8. Plot PCA (Gene Expression)
+# 5. Plot PCA (Gene Expression)
 # -------------------------------
 
 plt.figure(figsize=(6, 5))
@@ -123,7 +67,7 @@ plt.savefig("PCA_gene.png", dpi=300)
 plt.show()
 
 # -------------------------------
-# 9. Clean plotting helper
+# 6. Clean plotting helper
 # -------------------------------
 
 def plot_pca_with_labels(pca_array, labels, title, output_png, top_n=10):
@@ -167,12 +111,15 @@ def plot_pca_with_labels(pca_array, labels, title, output_png, top_n=10):
     plt.savefig(output_png, dpi=300, bbox_inches="tight")
     plt.show()
 
-    # save label counts actually used in the plot
-    label_count_df = labels_plot.value_counts().rename_axis("label").reset_index(name="count")
+    label_count_df = (
+        labels_plot.value_counts()
+        .rename_axis("label")
+        .reset_index(name="count")
+    )
     return label_count_df
 
 # -------------------------------
-# 10. Plot gene/morphology PCA colored by metadata label
+# 7. Plot gene PCA colored by metadata label
 # -------------------------------
 
 label_col = "RNA type"
@@ -185,14 +132,6 @@ if label_col in meta.columns:
         labels,
         title=f"Gene Expression PCA Colored by {label_col}",
         output_png=f"PCA_gene_colored_by_{label_col.replace(' ', '_')}_clean.png",
-        top_n=10
-    )
-
-    morph_label_counts = plot_pca_with_labels(
-        morph_pca,
-        labels,
-        title=f"Morphology PCA Colored by {label_col}",
-        output_png=f"PCA_morph_colored_by_{label_col.replace(' ', '_')}_clean.png",
         top_n=10
     )
 
@@ -210,7 +149,7 @@ else:
     print(meta.columns.tolist())
 
 # -------------------------------
-# 11. Scree plot for gene PCA
+# 8. Scree plot for gene PCA
 # -------------------------------
 
 plt.figure(figsize=(6, 4))
@@ -227,7 +166,7 @@ plt.savefig("PCA_scree.png", dpi=300)
 plt.show()
 
 # -------------------------------
-# 12. Save explained variance tables
+# 9. Save explained variance table
 # -------------------------------
 
 gene_var_df = pd.DataFrame({
@@ -235,31 +174,13 @@ gene_var_df = pd.DataFrame({
     "variance_explained": pca_g.explained_variance_ratio_
 })
 
-morph_var_df = pd.DataFrame({
-    "PC": [f"PC{i+1}" for i in range(len(pca_m.explained_variance_ratio_))],
-    "variance_explained": pca_m.explained_variance_ratio_
-})
-
-joint_var_df = pd.DataFrame({
-    "PC": [f"PC{i+1}" for i in range(len(pca_joint.explained_variance_ratio_))],
-    "variance_explained": pca_joint.explained_variance_ratio_
-})
-
 gene_var_df.to_csv("gene_pca_variance_explained.csv", index=False)
-morph_var_df.to_csv("morphology_pca_variance_explained.csv", index=False)
-joint_var_df.to_csv("joint_pca_variance_explained.csv", index=False)
 
 print("\nSaved files:")
-print("- morphology_pca.csv")
 print("- gene_pca.csv")
-print("- joint_pca.csv")
-print("- PCA_morph.png")
 print("- PCA_gene.png")
 print(f"- PCA_gene_colored_by_{label_col.replace(' ', '_')}_clean.png")
-print(f"- PCA_morph_colored_by_{label_col.replace(' ', '_')}_clean.png")
 print("- PCA_scree.png")
 print("- gene_pca_variance_explained.csv")
-print("- morphology_pca_variance_explained.csv")
-print("- joint_pca_variance_explained.csv")
 if label_col in meta.columns:
     print(f"- PCA_label_counts_{label_col.replace(' ', '_')}.csv")
