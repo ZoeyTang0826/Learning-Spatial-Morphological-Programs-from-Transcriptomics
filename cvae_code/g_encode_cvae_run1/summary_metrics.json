@@ -1,0 +1,38 @@
+{
+  "condition_mode": "g",
+  "latent_dim": 8,
+  "shared_pc_indices_zero_based": [
+    0,
+    1,
+    2,
+    4
+  ],
+  "shared_pc_names": [
+    "PC1",
+    "PC2",
+    "PC3",
+    "PC5"
+  ],
+  "shared_pc_explained_variance_ratio": [
+    0.41356179118156433,
+    0.10505366325378418,
+    0.09108489751815796,
+    0.05098609998822212
+  ],
+  "n_cells": 644,
+  "n_morph_features": 23,
+  "cond_dim": 50,
+  "warm_start_epochs": 0,
+  "residual_scale_mode": "none",
+  "residual_scale_init": 0.1,
+  "best_val_loss": 0.22838447988033295,
+  "test_mean_r2_full": 0.7910912866177766,
+  "test_mean_r2_base": 0.6930275429850039,
+  "test_mean_delta_r2_conditional": 0.09806374363277269,
+  "test_median_delta_r2_conditional": 0.06219816207885742,
+  "tau_mean": null,
+  "tau_min": null,
+  "tau_max": null,
+  "num_features_improved": 23,
+  "num_features_hurt": 0
+}

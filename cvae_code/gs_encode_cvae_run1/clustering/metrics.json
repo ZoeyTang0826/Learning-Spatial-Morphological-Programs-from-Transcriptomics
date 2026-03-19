@@ -1,0 +1,14 @@
+{
+  "representation_file": "/home/qinh3/PatchSeq/results_residual_pc_vae_ablation/gs_20260319_164640/pcs_1_2_3_5__warm_0__scale_none/conditional_alpha.csv",
+  "label_used": "RNA type",
+  "depth_col": "Soma depth (\u00b5m)",
+  "min_class_count": 2,
+  "n_samples_before_filter": 644,
+  "n_classes_before_filter": 74,
+  "n_samples_after_filter": 633,
+  "n_classes_after_filter": 63,
+  "dim": 4,
+  "knn_k": 10,
+  "knn_accuracy": 0.33070866141732286,
+  "kmeans_ari": 0.6239586469303069
+}
