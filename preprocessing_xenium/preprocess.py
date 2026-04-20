@@ -9,6 +9,7 @@ Extracts:
 Output: preprocessed.h5ad (AnnData)
 """
 
+import os
 import numpy as np
 import pandas as pd
 import anndata as ad
@@ -139,12 +140,48 @@ sc.pp.filter_genes(adata, min_cells=10)
 print(f"After QC: {adata.n_obs} cells × {adata.n_vars} genes")
 
 
+# ── 6b. Filter by morphological variability ───────────────────────────────────
+# Keep top MORPH_TOP_FRAC of cells ranked by variance across morphology features.
+# Standardize first so all features contribute equally regardless of scale.
+
+MORPH_TOP_FRAC = 0.20   # keep top 20% most morphologically variable cells
+
+morph_cols_all = [c for c in adata.obs.columns if any(
+    c.startswith(p) for p in ("cell_", "nucleus_")
+)]
+morph_mat = adata.obs[morph_cols_all].copy().astype(float)
+
+# Standardize each feature to zero mean / unit variance
+morph_std = (morph_mat - morph_mat.mean()) / (morph_mat.std() + 1e-8)
+
+# Per-cell morphological variance score = variance across standardized features
+morph_var_score = morph_std.var(axis=1)
+
+threshold = morph_var_score.quantile(1 - MORPH_TOP_FRAC)
+keep_mask = morph_var_score >= threshold
+adata = adata[keep_mask].copy()
+
+print(f"After morphology variance filter (top {int(MORPH_TOP_FRAC*100)}%): "
+      f"{adata.n_obs} cells × {adata.n_vars} genes")
+
+
 # ── 7. Save ───────────────────────────────────────────────────────────────────
 
-# Gene expression (cells × genes), log-normalized
+# Gene expression: log-normalized
 gene_expr = adata.to_df()
 gene_expr.to_csv("gene_expression.csv")
 print("Saved gene_expression.csv")
+
+# Gene expression: raw counts (needed for scVI)
+raw_counts = pd.DataFrame(
+    adata.layers["counts"].toarray()
+    if hasattr(adata.layers["counts"], "toarray")
+    else adata.layers["counts"],
+    index=adata.obs.index,
+    columns=adata.var_names,
+)
+raw_counts.to_csv("gene_expression_raw.csv")
+print("Saved gene_expression_raw.csv")
 
 # Morphology features
 morph_cols = [c for c in adata.obs.columns if any(
@@ -154,7 +191,6 @@ adata.obs[morph_cols].to_csv("morphology.csv")
 print("Saved morphology.csv")
 
 # Spatial coordinates
-import pandas as pd
 spatial_df = pd.DataFrame(
     adata.obsm["spatial"],
     index=adata.obs.index,
@@ -162,3 +198,28 @@ spatial_df = pd.DataFrame(
 )
 spatial_df.to_csv("spatial.csv")
 print("Saved spatial.csv")
+
+# Cell type annotations — load from Janesick et al. 2023 supplementary file
+ANNOT_XLSX = os.path.expanduser(
+    "~/Downloads/Cell_Barcode_Type_Matrices.xlsx"
+)
+if os.path.exists(ANNOT_XLSX):
+    annot_df = pd.read_excel(ANNOT_XLSX,
+                             sheet_name="Xenium R1 Fig1-5 (supervised)")
+    # Barcodes are integer cell IDs matching adata.obs.index
+    annot_df["Barcode"] = annot_df["Barcode"].astype(int)
+    annot_df = annot_df.set_index("Barcode").rename(
+        columns={"Cluster": "cell_type"})
+
+    # Align to surviving cells after QC + morphology filter
+    cell_ids = adata.obs.index.astype(int)
+    cell_type_series = annot_df["cell_type"].reindex(cell_ids)
+    cell_type_series.index = adata.obs.index
+
+    adata.obs["cell_type"] = cell_type_series.values
+    adata.obs[["cell_type"]].to_csv("cell_annotations.csv")
+
+    print("\nCell type distribution after filtering:")
+    print(adata.obs["cell_type"].value_counts().to_string())
+else:
+    print(f"\nAnnotation file not found at {ANNOT_XLSX} — skipping.")
