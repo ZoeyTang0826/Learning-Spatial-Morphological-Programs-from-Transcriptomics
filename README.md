@@ -28,6 +28,8 @@ We compare unimodal and multimodal approaches for integrating **gene expression*
 
 ### Patch-seq
 
+**Source:** [Berens Lab Mini-Atlas](https://github.com/berenslab/mini-atlas)
+
 Paired single-cell measurements of:
 
 - Gene expression
@@ -43,6 +45,8 @@ After preprocessing and multimodal alignment:
 Morphology captures properties including laminar depth, dendritic extent, branching complexity, and arbor polarity.
 
 ### Xenium Human Breast Cancer
+
+**Source:** [10x Genomics Xenium Human Breast Cancer Dataset](https://www.10xgenomics.com/products/xenium-in-situ/preview-dataset-human-breast)
 
 Spatial transcriptomics dataset containing approximately:
 
